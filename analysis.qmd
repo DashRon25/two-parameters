@@ -2,5 +2,56 @@
 title: "two-parameters"
 author: "Ronit Dash"
 format: html
+execute: 
+  echo: false
 ---
 
+```{r}
+#| message: false
+library(tidyverse)
+library(primer.data)
+library(brms)
+library(tidybayes)
+library(gtsummary)
+```
+
+```{r}
+nhanes |> filter(sex == "Male", age >= +18) |> select(height) |> drop_na() |>
+ggplot(aes(x = height)) + geom_histogram(bins = 50) + 
+labs(title = "Male Adult Height in the US in 2010",
+x = "Height(cm)", y = "Count", 
+caption = "Source: National Health and Nutrition Examination Survey")
+```
+
+Using the results of a National Health and Nutrition and Examination Survey from 2009-2011, we are analyzing and creating a model for the average height of adult men in America. One issue could be that males may have immigrated into America that skew the average height. We used an intercept-only regression to model height. The average height of adult men in America is 176 cm, with a confidence interval of 172-180.
+
+```{r}
+#| cache: TRUE
+fit_male_height <- brm(formula = height ~ 1, data = nhanes, family = gaussian(), 
+silent = 2, 
+refresh = 0, 
+seed = 12)
+```
+
+```{r}
+tbl_regression(fit_male_height, intercept = TRUE)
+ndata <- tibble(.rows = 1)
+```
+
+```{r}
+#| label: plot
+fit_male_height |> add_predicted_draws(newdata = ndata) |>
+ggplot(aes(x = .prediction)) + 
+geom_histogram(aes(y = after_stat(count / sum(count))), bins = 100) + 
+labs(title = "Posterior for Height of Random Male", 
+subtitle = "Uncertainty for a single individual is much greater than for the expected value", 
+x = "Height(cm)", y = "Probability", 
+caption = "Data source: NHANES") + scale_x_continuous(labels = scales::number_format()) +
+scale_y_continuous(labels = scales::percent_format(accuracy = 1))
+```
+
+```{r}
+fit_male_height |> add_predicted_draws(newdata = ndata) |>
+mutate(tall = if_else(.prediction > 180, TRUE, FALSE)) |>
+summarize(odds = mean(tall))
+```
