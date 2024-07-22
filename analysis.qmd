@@ -1,0 +1,6 @@
+---
+title: "two-parameters"
+author: "Ronit Dash"
+format: html
+---
+
